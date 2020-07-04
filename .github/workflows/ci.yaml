@@ -1,17 +1,24 @@
 name: Build Tests
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
 
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        cxx: [g++, g++-7, g++-8, g++-9]
+
+    env:
+      CXX: ${{ matrix.cxx }}
+
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-python@v1
       with:
-        python-version: '2.x'
+        python-version: '3.x'
         architecture: 'x64'
 
     - name: Run Preprocessor Unit Tests

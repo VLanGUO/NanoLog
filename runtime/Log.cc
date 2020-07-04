@@ -60,6 +60,7 @@ Log::insertCheckpoint(char **out, char *outLimit, bool writeDictionary) {
     if (!writeDictionary)
         return true;
 
+#ifdef PREPROCESSOR_NANOLOG
     long int bytesWritten = GeneratedFunctions::writeDictionary(*out, outLimit);
 
     if (bytesWritten == -1) {
@@ -72,6 +73,7 @@ Log::insertCheckpoint(char **out, char *outLimit, bool writeDictionary) {
     ck->newMetadataBytes = static_cast<uint32_t>(bytesWritten);
     ck->totalMetadataEntries = static_cast<uint32_t>(
             GeneratedFunctions::numLogIds);
+#endif // PREPROCESSOR_NANOLOG
 
     return true;
 }
@@ -181,6 +183,7 @@ Log::Encoder::encodeNewDictionaryEntries(uint32_t& currentPosition,
     return df->newMetadataBytes;
 }
 
+#ifdef PREPROCESSOR_NANOLOG
 /**
  * Interprets the uncompressed log messages (created by the compile-time
  * generated code) contained in the *from buffer and compresses them to
@@ -259,13 +262,17 @@ Log::Encoder::encodeLogMsgs(char *from,
     }
 
     assert(currentExtentSize);
-    *currentExtentSize += downCast<uint32_t>(writePos - bufferStart);
+    uint32_t currentSize;
+    std::memcpy(&currentSize, currentExtentSize, sizeof(uint32_t));
+    currentSize += downCast<uint32_t>(writePos - bufferStart);
+    std::memcpy(currentExtentSize, &currentSize, sizeof(uint32_t));
 
     if (numEventsCompressed)
         *numEventsCompressed += numEventsProcessed;
 
     return nbytes - remaining;
 }
+#endif // PREPROCESSOR_NANOLOG
 
 
 /**
@@ -328,7 +335,7 @@ Log::Encoder::encodeLogMsgs(char *from,
                                 "be a problem with your integration (static "
                                 "logs detected=%lu).\r\n",
                                 entry->fmtId,
-                                GeneratedFunctions::numLogIds);
+                                 GeneratedFunctions::numLogIds);
             }
 
             break;
@@ -383,7 +390,10 @@ Log::Encoder::encodeLogMsgs(char *from,
     }
 
     assert(currentExtentSize);
-    *currentExtentSize += downCast<uint32_t>(writePos - bufferStart);
+    uint32_t currentSize;
+    std::memcpy(&currentSize, currentExtentSize, sizeof(uint32_t));
+    currentSize += downCast<uint32_t>(writePos - bufferStart);
+    std::memcpy(currentExtentSize, &currentSize, sizeof(uint32_t));
 
     if (numEventsCompressed)
         *numEventsCompressed += numEventsProcessed;
@@ -1347,6 +1357,7 @@ Log::Decoder::BufferFragment::decompressNextLogStatement(FILE *outputFd,
         strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", tm);
     }
 
+#ifdef PREPROCESSOR_NANOLOG
     if (fmtId2metadata.empty() || aggregationFn != nullptr) {
         // Output the context
         struct GeneratedFunctions::LogMetadata meta =
@@ -1379,7 +1390,9 @@ Log::Decoder::BufferFragment::decompressNextLogStatement(FILE *outputFd,
         GeneratedFunctions::decompressAndPrintFnArray[nextLogId](&readPos,
                                                                  outputFd,
                                                                  aggFn);
-    } else {
+    } else
+#endif // PREPROCESSOR_NANOLOG
+    {
         using namespace BufferUtils;
         auto *metadata = reinterpret_cast<FormatMetadata*>(
                                             fmtId2metadata.at(nextLogId));
